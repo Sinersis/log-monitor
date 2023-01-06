@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/json"
+	"github.com/joho/godotenv"
 	"io"
 	"log"
 	"net/smtp"
@@ -13,28 +14,34 @@ type Log struct {
 	pathToFolder, fileName, hash string
 }
 
+func init() {
+	// loads values from .env into the system
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
+}
+
 func main() {
 
-	var pathToFolder string = os.Args[1]
-	var fileName string = os.Args[2]
-	//var email string = os.Args[3]
-	var pathToLoggerHash string = os.Args[4]
+	pathToFolder, _ := os.LookupEnv("PATH_TO_LOG_FOLDER")
+	fileName, _ := os.LookupEnv("FILE_NAME")
+	pathToLoggerHash, _ := os.LookupEnv("PATH_TO_LOGGER_HASH_FOLDER")
 
 	if loggerHashChecker(pathToLoggerHash, pathToFolder, fileName) {
-		//emailSend(email, fileName)
+		emailSend(fileName)
 	}
 
 }
 
-func emailSend(email string, fileName string, pwdEmail string, fromEmail string) {
-	from := fromEmail
-	password := pwdEmail
+func emailSend(fileName string) {
+	from, _ := os.LookupEnv("EMAIL_SENDER")
+	password, _ := os.LookupEnv("EMAIL_APP_PWD")
 
-	toEmailAddress := email
+	toEmailAddress, _ := os.LookupEnv("EMAIL_TO")
 	to := []string{toEmailAddress}
 
-	host := "smtp.gmail.com"
-	port := "587"
+	host, _ := os.LookupEnv("EMAIL_HOST")
+	port, _ := os.LookupEnv("EMAIL_PORT")
 	address := host + ":" + port
 
 	subject := "Что-то пошло не так: Лог " + fileName + " поменял свое содержимое \n"
