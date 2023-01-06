@@ -2,3 +2,5 @@
 /logs
 /logger
 .env
+watcher
+watcher-linux

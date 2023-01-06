@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/joho/godotenv"
+	"gopkg.in/gomail.v2"
 	"io"
 	"log"
-	"net/smtp"
 	"os"
 )
 
@@ -35,24 +35,25 @@ func main() {
 }
 
 func emailSend(fileName string) {
+
 	from, _ := os.LookupEnv("EMAIL_SENDER")
 	password, _ := os.LookupEnv("EMAIL_APP_PWD")
 
 	toEmailAddress, _ := os.LookupEnv("EMAIL_TO")
-	to := []string{toEmailAddress}
-
-	host, _ := os.LookupEnv("EMAIL_HOST")
-	port, _ := os.LookupEnv("EMAIL_PORT")
-	address := host + ":" + port
 
 	subject := "Что-то пошло не так: Лог " + fileName + " поменял свое содержимое \n"
 	body := "Вы получили это письмо так как что-то случилось с сервисом: " + fileName
-	message := []byte(subject + body)
 
-	auth := smtp.PlainAuth("", from, password, host)
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", from)
+	msg.SetHeader("To", toEmailAddress)
+	msg.SetHeader("Subject", subject)
+	msg.SetBody("text/html", body)
 
-	err := smtp.SendMail(address, auth, from, to, message)
-	if err != nil {
+	n := gomail.NewDialer("smtp.gmail.com", 587, from, password)
+
+	// Send the email
+	if err := n.DialAndSend(msg); err != nil {
 		panic(err)
 	}
 }
@@ -77,7 +78,6 @@ func loggerHashChecker(pathToLoggerHash string, pathToFolder string, filename st
 	} else {
 		return false
 	}
-	//return false
 }
 
 func readFromJson(fileName string, pathToLoggerHash string) string {
