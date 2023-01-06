@@ -2,7 +2,9 @@ package main
 
 import (
 	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/joho/godotenv"
 	"io"
 	"log"
@@ -10,12 +12,11 @@ import (
 	"os"
 )
 
-type Log struct {
-	pathToFolder, fileName, hash string
+type LogStruct struct {
+	PathToFolder, FileName, Hash string
 }
 
 func init() {
-	// loads values from .env into the system
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
@@ -45,7 +46,7 @@ func emailSend(fileName string) {
 	address := host + ":" + port
 
 	subject := "Что-то пошло не так: Лог " + fileName + " поменял свое содержимое \n"
-	body := "Вы получили это письмо так как что-то случилось с сервисом" + fileName
+	body := "Вы получили это письмо так как что-то случилось с сервисом: " + fileName
 	message := []byte(subject + body)
 
 	auth := smtp.PlainAuth("", from, password, host)
@@ -57,7 +58,7 @@ func emailSend(fileName string) {
 }
 
 func loggerHashChecker(pathToLoggerHash string, pathToFolder string, filename string) bool {
-
+	file := pathToFolder + "/" + filename
 	if _, err := os.Stat(pathToLoggerHash); os.IsNotExist(err) {
 		err := os.Mkdir(pathToLoggerHash, 0755)
 		if err != nil {
@@ -65,29 +66,62 @@ func loggerHashChecker(pathToLoggerHash string, pathToFolder string, filename st
 		}
 	}
 
-	if _, err := os.Stat(pathToLoggerHash + filename + ".json"); os.IsNotExist(err) {
-		file := pathToFolder + "/" + filename
+	if _, err := os.Stat(pathToLoggerHash + "/" + filename + ".json"); os.IsNotExist(err) {
 		writeToJson(pathToFolder, filename, getHashSum(file), pathToLoggerHash)
-
 		return false
 	}
 
-	return false
+	if getHashSum(file) != readFromJson(filename, pathToLoggerHash) {
+		writeToJson(pathToFolder, filename, getHashSum(file), pathToLoggerHash)
+		return true
+	} else {
+		return false
+	}
+	//return false
 }
 
-func writeToJson(pathToFolder string, fileName string, fileHash []byte, pathToLoggerHash string) {
-	data := Log{
-		pathToFolder: "pathToFolder",
-		fileName:     "fileName",
-		hash:         "string(fileHash)",
+func readFromJson(fileName string, pathToLoggerHash string) string {
+
+	var logger LogStruct
+	path := pathToLoggerHash + "/" + fileName + ".json"
+
+	jsonFile, err := os.Open(path)
+
+	if err != nil {
+		fmt.Println(err)
 	}
 
-	file, _ := json.MarshalIndent(data, "", "")
-	path := pathToLoggerHash + "/" + fileName + ".json"
-	_ = os.WriteFile(path, file, 0644)
+	defer jsonFile.Close()
+
+	byteValue, _ := io.ReadAll(jsonFile)
+
+	err = json.Unmarshal(byteValue, &logger)
+
+	if err != nil {
+		return "Halt"
+	}
+
+	return logger.Hash
 }
 
-func getHashSum(logFilePath string) []byte {
+func writeToJson(pathToFolder string, fileName string, fileHash string, pathToLoggerHash string) {
+	data := LogStruct{
+		PathToFolder: pathToFolder,
+		FileName:     fileName,
+		Hash:         fileHash,
+	}
+
+	file, err := json.Marshal(data)
+
+	if err != nil {
+		panic(err)
+	}
+
+	path := pathToLoggerHash + "/" + fileName + ".json"
+	_ = os.WriteFile(path, file, os.ModePerm)
+}
+
+func getHashSum(logFilePath string) string {
 	file, err := os.Open(logFilePath)
 
 	if err != nil {
@@ -103,5 +137,5 @@ func getHashSum(logFilePath string) []byte {
 		panic(err)
 	}
 
-	return hash.Sum(nil)
+	return hex.EncodeToString(hash.Sum(nil))
 }
