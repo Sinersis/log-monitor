@@ -38,11 +38,12 @@ func emailSend(fileName string) {
 
 	from, _ := os.LookupEnv("EMAIL_SENDER")
 	password, _ := os.LookupEnv("EMAIL_APP_PWD")
+	processId, _ := os.LookupEnv("PROCESS_ID")
 
 	toEmailAddress, _ := os.LookupEnv("EMAIL_TO")
 
-	subject := "Что-то пошло не так: Лог " + fileName + " поменял свое содержимое \n"
-	body := "Вы получили это письмо так как что-то случилось с сервисом: " + fileName
+	subject := "Что-то пошло не так: Лог процесса" + processId + " поменял свое содержимое \n"
+	body := "Вы получили это письмо так как что-то случилось с сервисом: " + processId
 
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", from)
